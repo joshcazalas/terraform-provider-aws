@@ -11,70 +11,25 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	awstypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
-	"github.com/hashicorp/terraform-plugin-framework/list"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/hashicorp/terraform-provider-aws/internal/errs/fwdiag"
+	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
-	"github.com/hashicorp/terraform-provider-aws/internal/logging"
 	inttypes "github.com/hashicorp/terraform-provider-aws/internal/types"
-	"github.com/hashicorp/terraform-provider-aws/names"
 )
 
 // Function annotations are used for list resource registration to the Provider. DO NOT EDIT.
 // @SDKListResource("aws_cloudwatch_metric_alarm")
 func newMetricAlarmResourceAsListResource() inttypes.ListResourceForSDK {
-	l := listResourceMetricAlarm{}
-	l.SetResourceSchema(resourceMetricAlarm())
-	return &l
-}
-
-var _ list.ListResource = &listResourceMetricAlarm{}
-
-type listResourceMetricAlarm struct {
-	framework.ListResourceWithSDKv2Resource
-}
-
-func (l *listResourceMetricAlarm) List(ctx context.Context, request list.ListRequest, stream *list.ListResultsStream) {
-	conn := l.Meta().CloudWatchClient(ctx)
-
-	stream.Results = func(yield func(list.ListResult) bool) {
-		var input cloudwatch.DescribeAlarmsInput
-		input.AlarmTypes = []awstypes.AlarmType{awstypes.AlarmTypeMetricAlarm}
-		for item, err := range listMetricAlarms(ctx, conn, &input) {
-			if err != nil {
-				result := fwdiag.NewListResultErrorDiagnostic(err)
-				yield(result)
-				return
+	return framework.NewSDKListResource(resourceMetricAlarm(), framework.SDKListSpec[awstypes.MetricAlarm]{
+		Items: func(ctx context.Context, c *conns.AWSClient) iter.Seq2[awstypes.MetricAlarm, error] {
+			input := cloudwatch.DescribeAlarmsInput{
+				AlarmTypes: []awstypes.AlarmType{awstypes.AlarmTypeMetricAlarm},
 			}
 
-			name := aws.ToString(item.AlarmName)
-			ctx := tflog.SetField(ctx, logging.ResourceAttributeKey(names.AttrID), name)
-
-			result := request.NewListResult(ctx)
-			rd := l.ResourceData()
-			rd.SetId(name)
-
-			tflog.Info(ctx, "Reading CloudWatch Metric Alarm")
-			if err := resourceMetricAlarmFlatten(ctx, rd, &item); err != nil {
-				tflog.Error(ctx, "Reading CloudWatch Metric Alarm", map[string]any{
-					"error": err.Error(),
-				})
-				continue
-			}
-
-			result.DisplayName = name
-
-			l.SetResult(ctx, l.Meta(), request.IncludeResource, rd, &result)
-			if result.Diagnostics.HasError() {
-				yield(result)
-				return
-			}
-
-			if !yield(result) {
-				return
-			}
-		}
-	}
+			return listMetricAlarms(ctx, c.CloudWatchClient(ctx), &input)
+		},
+		ID:      func(a awstypes.MetricAlarm) string { return aws.ToString(a.AlarmName) },
+		Flatten: resourceMetricAlarmFlatten,
+	})
 }
 
 func listMetricAlarms(ctx context.Context, conn *cloudwatch.Client, input *cloudwatch.DescribeAlarmsInput) iter.Seq2[awstypes.MetricAlarm, error] {

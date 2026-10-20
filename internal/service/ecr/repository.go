@@ -227,7 +227,7 @@ func resourceRepositoryRead(ctx context.Context, d *schema.ResourceData, meta an
 	return diags
 }
 
-func resourceRepositoryFlatten(_ context.Context, d *schema.ResourceData, repository *types.Repository) {
+func resourceRepositoryFlatten(_ context.Context, d *schema.ResourceData, repository *types.Repository) error {
 	d.Set(names.AttrARN, repository.RepositoryArn)
 	d.Set(names.AttrEncryptionConfiguration, flattenRepositoryEncryptionConfiguration(repository.EncryptionConfiguration))
 	d.Set("image_scanning_configuration", flattenImageScanningConfiguration(repository.ImageScanningConfiguration))
@@ -236,6 +236,8 @@ func resourceRepositoryFlatten(_ context.Context, d *schema.ResourceData, reposi
 	d.Set(names.AttrName, repository.RepositoryName)
 	d.Set("registry_id", repository.RegistryId)
 	d.Set("repository_url", repository.RepositoryUri)
+
+	return nil
 }
 
 func resourceRepositoryUpdate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
