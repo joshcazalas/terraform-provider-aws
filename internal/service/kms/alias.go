@@ -116,7 +116,7 @@ func resourceAliasRead(ctx context.Context, d *schema.ResourceData, meta any) di
 		return sdkdiag.AppendErrorf(diags, "reading KMS Alias (%s): %s", d.Id(), err)
 	}
 
-	if err := resourceAliasFlatten(ctx, d, alias); err != nil {
+	if err := resourceAliasFlatten(ctx, alias, d); err != nil {
 		return sdkdiag.AppendFromErr(diags, err)
 	}
 
@@ -206,7 +206,7 @@ func suppressEquivalentKeyARNOrID(k, old, new string, d *schema.ResourceData) bo
 	return keyARNOrIDEqual(old, new)
 }
 
-func resourceAliasFlatten(_ context.Context, d *schema.ResourceData, alias *awstypes.AliasListEntry) error {
+func resourceAliasFlatten(_ context.Context, alias *awstypes.AliasListEntry, d *schema.ResourceData) error {
 	aliasARN := aws.ToString(alias.AliasArn)
 	targetKeyID := aws.ToString(alias.TargetKeyId)
 	targetKeyARN, err := aliasARNToKeyARN(aliasARN, targetKeyID)

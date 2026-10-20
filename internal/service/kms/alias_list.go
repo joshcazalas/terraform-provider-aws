@@ -5,7 +5,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
 	"iter"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,6 +12,7 @@ import (
 	awstypes "github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
+	tfiter "github.com/hashicorp/terraform-provider-aws/internal/iter"
 	inttypes "github.com/hashicorp/terraform-provider-aws/internal/types"
 )
 
@@ -30,20 +30,6 @@ func aliasResourceAsListResource() inttypes.ListResourceForSDK {
 }
 
 func listAliases(ctx context.Context, conn *kms.Client, input *kms.ListAliasesInput) iter.Seq2[awstypes.AliasListEntry, error] {
-	return func(yield func(awstypes.AliasListEntry, error) bool) {
-		pages := kms.NewListAliasesPaginator(conn, input)
-		for pages.HasMorePages() {
-			page, err := pages.NextPage(ctx)
-			if err != nil {
-				yield(awstypes.AliasListEntry{}, fmt.Errorf("listing KMS Aliases resources: %w", err))
-				return
-			}
-
-			for _, item := range page.Aliases {
-				if !yield(item, nil) {
-					return
-				}
-			}
-		}
-	}
+	return tfiter.PageItems[kms.Options](ctx, "listing KMS Aliases resources", kms.NewListAliasesPaginator(conn, input),
+		func(o *kms.ListAliasesOutput) []awstypes.AliasListEntry { return o.Aliases })
 }

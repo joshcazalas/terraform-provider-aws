@@ -5,7 +5,6 @@ package ecr
 
 import (
 	"context"
-	"fmt"
 	"iter"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,6 +12,7 @@ import (
 	awstypes "github.com/aws/aws-sdk-go-v2/service/ecr/types"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
+	tfiter "github.com/hashicorp/terraform-provider-aws/internal/iter"
 	inttypes "github.com/hashicorp/terraform-provider-aws/internal/types"
 )
 
@@ -30,20 +30,6 @@ func repositoryResourceAsListResource() inttypes.ListResourceForSDK {
 }
 
 func listRepositories(ctx context.Context, conn *ecr.Client, input *ecr.DescribeRepositoriesInput) iter.Seq2[awstypes.Repository, error] {
-	return func(yield func(awstypes.Repository, error) bool) {
-		pages := ecr.NewDescribeRepositoriesPaginator(conn, input)
-		for pages.HasMorePages() {
-			page, err := pages.NextPage(ctx)
-			if err != nil {
-				yield(awstypes.Repository{}, fmt.Errorf("listing ECR Repository resources: %w", err))
-				return
-			}
-
-			for _, item := range page.Repositories {
-				if !yield(item, nil) {
-					return
-				}
-			}
-		}
-	}
+	return tfiter.PageItems[ecr.Options](ctx, "listing ECR Repository resources", ecr.NewDescribeRepositoriesPaginator(conn, input),
+		func(o *ecr.DescribeRepositoriesOutput) []awstypes.Repository { return o.Repositories })
 }

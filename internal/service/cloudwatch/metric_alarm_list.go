@@ -5,7 +5,6 @@ package cloudwatch
 
 import (
 	"context"
-	"fmt"
 	"iter"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,6 +12,7 @@ import (
 	awstypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
+	tfiter "github.com/hashicorp/terraform-provider-aws/internal/iter"
 	inttypes "github.com/hashicorp/terraform-provider-aws/internal/types"
 )
 
@@ -33,20 +33,6 @@ func newMetricAlarmResourceAsListResource() inttypes.ListResourceForSDK {
 }
 
 func listMetricAlarms(ctx context.Context, conn *cloudwatch.Client, input *cloudwatch.DescribeAlarmsInput) iter.Seq2[awstypes.MetricAlarm, error] {
-	return func(yield func(awstypes.MetricAlarm, error) bool) {
-		pages := cloudwatch.NewDescribeAlarmsPaginator(conn, input)
-		for pages.HasMorePages() {
-			page, err := pages.NextPage(ctx)
-			if err != nil {
-				yield(inttypes.Zero[awstypes.MetricAlarm](), fmt.Errorf("listing CloudWatch Metric Alarms: %w", err))
-				return
-			}
-
-			for _, item := range page.MetricAlarms {
-				if !yield(item, nil) {
-					return
-				}
-			}
-		}
-	}
+	return tfiter.PageItems[cloudwatch.Options](ctx, "listing CloudWatch Metric Alarms", cloudwatch.NewDescribeAlarmsPaginator(conn, input),
+		func(o *cloudwatch.DescribeAlarmsOutput) []awstypes.MetricAlarm { return o.MetricAlarms })
 }
