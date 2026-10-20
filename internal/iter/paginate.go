@@ -20,6 +20,10 @@ type Paginator[O, OPT any] interface {
 // items extracts that slice from a page. The first error is yielded with a nil
 // slice, wrapped as "what: err", and iteration stops.
 //
+// The returned sequence is single-use: p carries the pagination state, so a
+// second range over the same sequence yields nothing. Call Pages again to
+// start over.
+//
 // OPT cannot be inferred when no option functions are passed, so give it
 // explicitly and let O and T be inferred from items:
 //
