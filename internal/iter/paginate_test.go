@@ -146,7 +146,7 @@ func TestPagesPassesOptionFunctions(t *testing.T) {
 	opt := func(*pagerOptions) {}
 
 	pages := slices.Collect(func(yield func([]string) bool) {
-		for items, err := range Pages(context.Background(), "listing things", p, pagerItems, opt, opt) {
+		for items, err := range pages(context.Background(), "listing things", p, pagerItems, opt, opt) {
 			if err != nil {
 				return
 			}
