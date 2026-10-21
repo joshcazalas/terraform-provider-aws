@@ -17,10 +17,8 @@ import (
 	"github.com/hashicorp/terraform-provider-aws/names"
 )
 
-// SDKListSpec is the declarative model for a paginated list over an SDKv2
-// resource whose list call returns whole objects.
-//
-// Item is inferred from Items and is never authored.
+// SDKListSpec declares a list resource over an SDKv2 resource whose paginated
+// list call returns whole objects.
 type SDKListSpec[Item any] struct {
 	// Items binds the service's page iterator. Required.
 	Items func(context.Context, *conns.AWSClient) iter.Seq2[Item, error]
@@ -29,13 +27,10 @@ type SDKListSpec[Item any] struct {
 	ID func(Item) string
 
 	// Flatten binds the resource's flatten function. Required. The signature
-	// is the one skaff generates, so a scaffolded resource binds unchanged.
-	// Resources that do not need the client take it as _.
+	// matches what skaff generates, so a scaffolded flatten binds unchanged.
 	Flatten func(context.Context, *conns.AWSClient, *Item, *schema.ResourceData) error
 
 	// DisplayName labels the result in Terraform's output. Defaults to the ID.
-	// Most list resources need it: the ID is often an ARN or a composite key
-	// while the display name is a bare name.
 	DisplayName func(Item) string
 }
 

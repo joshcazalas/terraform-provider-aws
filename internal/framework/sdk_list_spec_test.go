@@ -26,8 +26,6 @@ type listSpecItem struct {
 
 var errListSpec = errors.New("boom")
 
-// listSpecResource builds a list resource over the given items, with a flatten
-// that applies f to each item's ResourceData.
 func listSpecResource(items []listSpecItem, iterErr error, flatten func(listSpecItem, *schema.ResourceData) error, displayName func(listSpecItem) string) *sdkListResourceFromSpec[listSpecItem] {
 	l := &sdkListResourceFromSpec[listSpecItem]{
 		spec: SDKListSpec[listSpecItem]{
@@ -79,8 +77,8 @@ func listSpecRequest() list.ListRequest {
 	}
 }
 
-// collect drains the stream, returning display names of successful results and
-// the number of error results.
+// collect drains the stream. A positive stopAfter stops the consumer after
+// that many successful results.
 func collect(t *testing.T, l *sdkListResourceFromSpec[listSpecItem], stopAfter int) (displayNames []string, errs int) {
 	t.Helper()
 
@@ -173,7 +171,6 @@ func TestSDKListSpecFlattenErrorSkipsOnlyThatItem(t *testing.T) {
 	}
 }
 
-// A flatten that clears the ID means the object is logically deleted.
 func TestSDKListSpecClearedIDIsSkipped(t *testing.T) {
 	t.Parallel()
 
