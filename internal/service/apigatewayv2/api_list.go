@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
 	awstypes "github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
@@ -20,11 +21,11 @@ import (
 
 // @SDKListResource("aws_apigatewayv2_api")
 func newAPIResourceAsListResource() inttypes.ListResourceForSDK {
-	return framework.NewSDKListResource(resourceAPI(), framework.SDKListSpec[awstypes.Api]{
-		Items: func(ctx context.Context, c *conns.AWSClient) iter.Seq2[awstypes.Api, error] {
+	return framework.NewSDKListResource(resourceAPI(), framework.SDKListSpec[awstypes.Api, framework.RegionQuery]{
+		Items: func(ctx context.Context, c *conns.AWSClient, _ framework.RegionQuery) (iter.Seq2[awstypes.Api, error], diag.Diagnostics) {
 			var input apigatewayv2.GetApisInput
 
-			return listAPIs(ctx, c.APIGatewayV2Client(ctx), &input)
+			return listAPIs(ctx, c.APIGatewayV2Client(ctx), &input), nil
 		},
 		ID:          func(a awstypes.Api) string { return aws.ToString(a.ApiId) },
 		Flatten:     resourceAPIFlattenPage,

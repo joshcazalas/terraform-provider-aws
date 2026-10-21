@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	awstypes "github.com/aws/aws-sdk-go-v2/service/ecr/types"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
 	tfiter "github.com/hashicorp/terraform-provider-aws/internal/iter"
@@ -18,11 +19,11 @@ import (
 
 // @SDKListResource("aws_ecr_repository")
 func repositoryResourceAsListResource() inttypes.ListResourceForSDK {
-	return framework.NewSDKListResource(resourceRepository(), framework.SDKListSpec[awstypes.Repository]{
-		Items: func(ctx context.Context, c *conns.AWSClient) iter.Seq2[awstypes.Repository, error] {
+	return framework.NewSDKListResource(resourceRepository(), framework.SDKListSpec[awstypes.Repository, framework.RegionQuery]{
+		Items: func(ctx context.Context, c *conns.AWSClient, _ framework.RegionQuery) (iter.Seq2[awstypes.Repository, error], diag.Diagnostics) {
 			var input ecr.DescribeRepositoriesInput
 
-			return listRepositories(ctx, c.ECRClient(ctx), &input)
+			return listRepositories(ctx, c.ECRClient(ctx), &input), nil
 		},
 		ID:      func(r awstypes.Repository) string { return aws.ToString(r.RepositoryName) },
 		Flatten: resourceRepositoryFlatten,

@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	awstypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
 	tfiter "github.com/hashicorp/terraform-provider-aws/internal/iter"
@@ -19,13 +20,13 @@ import (
 // Function annotations are used for list resource registration to the Provider. DO NOT EDIT.
 // @SDKListResource("aws_cloudwatch_metric_alarm")
 func newMetricAlarmResourceAsListResource() inttypes.ListResourceForSDK {
-	return framework.NewSDKListResource(resourceMetricAlarm(), framework.SDKListSpec[awstypes.MetricAlarm]{
-		Items: func(ctx context.Context, c *conns.AWSClient) iter.Seq2[awstypes.MetricAlarm, error] {
+	return framework.NewSDKListResource(resourceMetricAlarm(), framework.SDKListSpec[awstypes.MetricAlarm, framework.RegionQuery]{
+		Items: func(ctx context.Context, c *conns.AWSClient, _ framework.RegionQuery) (iter.Seq2[awstypes.MetricAlarm, error], diag.Diagnostics) {
 			input := cloudwatch.DescribeAlarmsInput{
 				AlarmTypes: []awstypes.AlarmType{awstypes.AlarmTypeMetricAlarm},
 			}
 
-			return listMetricAlarms(ctx, c.CloudWatchClient(ctx), &input)
+			return listMetricAlarms(ctx, c.CloudWatchClient(ctx), &input), nil
 		},
 		ID:      func(a awstypes.MetricAlarm) string { return aws.ToString(a.AlarmName) },
 		Flatten: resourceMetricAlarmFlatten,

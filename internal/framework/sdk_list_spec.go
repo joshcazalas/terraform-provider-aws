@@ -7,7 +7,9 @@ import (
 	"context"
 	"iter"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
+	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
@@ -17,11 +19,30 @@ import (
 	"github.com/hashicorp/terraform-provider-aws/names"
 )
 
+// RegionQuery is the list configuration for a resource that takes no arguments
+// of its own. A regional list resource still accepts region, so its query
+// cannot be empty. Globally scoped resources use struct{}.
+type RegionQuery struct {
+	WithRegionModel
+}
+
 // SDKListSpec declares a list resource over an SDKv2 resource whose paginated
 // list call returns whole objects.
-type SDKListSpec[Item any] struct {
-	// Items binds the service's page iterator. Required.
-	Items func(context.Context, *conns.AWSClient) iter.Seq2[Item, error]
+//
+// Query is the resource's list configuration model, decoded from the
+// configuration before listing starts. Resources that declare no list
+// configuration use struct{}.
+type SDKListSpec[Item, Query any] struct {
+	// ConfigSchema declares the list configuration that Query decodes from.
+	// Leave it nil for resources that take no list configuration.
+	ConfigSchema func(context.Context) listschema.Schema
+
+	// Items turns the query into the service's page iterator. Required.
+	//
+	// Diagnostics are reported before listing starts, so building the AWS
+	// input belongs here rather than inside the iterator, where a failure
+	// could only be reported as a per-item error.
+	Items func(context.Context, *conns.AWSClient, Query) (iter.Seq2[Item, error], diag.Diagnostics)
 
 	// ID extracts the Terraform resource ID. Required.
 	ID func(Item) string
@@ -34,24 +55,53 @@ type SDKListSpec[Item any] struct {
 	DisplayName func(Item) string
 }
 
-type sdkListResourceFromSpec[Item any] struct {
+type sdkListResourceFromSpec[Item, Query any] struct {
 	ListResourceWithSDKv2Resource
-	spec SDKListSpec[Item]
+	spec SDKListSpec[Item, Query]
 }
 
 // NewSDKListResource builds a list resource from an SDKv2 schema and a spec.
-func NewSDKListResource[Item any](res *schema.Resource, spec SDKListSpec[Item]) inttypes.ListResourceForSDK {
-	l := &sdkListResourceFromSpec[Item]{spec: spec}
+func NewSDKListResource[Item, Query any](res *schema.Resource, spec SDKListSpec[Item, Query]) inttypes.ListResourceForSDK {
+	l := &sdkListResourceFromSpec[Item, Query]{spec: spec}
 	l.SetResourceSchema(res)
 
 	return l
 }
 
-func (l *sdkListResourceFromSpec[Item]) List(ctx context.Context, request list.ListRequest, stream *list.ListResultsStream) {
+func (l *sdkListResourceFromSpec[Item, Query]) ListResourceConfigSchema(ctx context.Context, _ list.ListResourceSchemaRequest, response *list.ListResourceSchemaResponse) {
+	if l.spec.ConfigSchema == nil {
+		response.Schema = listschema.Schema{
+			Attributes: map[string]listschema.Attribute{},
+			Blocks:     map[string]listschema.Block{},
+		}
+
+		return
+	}
+
+	response.Schema = l.spec.ConfigSchema(ctx)
+}
+
+func (l *sdkListResourceFromSpec[Item, Query]) List(ctx context.Context, request list.ListRequest, stream *list.ListResultsStream) {
 	awsClient := l.Meta()
 
+	var query Query
+	if request.Config.Raw.IsKnown() && !request.Config.Raw.IsNull() {
+		if diags := request.Config.Get(ctx, &query); diags.HasError() {
+			stream.Results = list.ListResultsStreamDiagnostics(diags)
+
+			return
+		}
+	}
+
+	items, diags := l.spec.Items(ctx, awsClient, query)
+	if diags.HasError() {
+		stream.Results = list.ListResultsStreamDiagnostics(diags)
+
+		return
+	}
+
 	stream.Results = func(yield func(list.ListResult) bool) {
-		for item, err := range l.spec.Items(ctx, awsClient) {
+		for item, err := range items {
 			if err != nil {
 				yield(fwdiag.NewListResultErrorDiagnostic(err))
 

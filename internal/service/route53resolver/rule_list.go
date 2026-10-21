@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/route53resolver"
 	awstypes "github.com/aws/aws-sdk-go-v2/service/route53resolver/types"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
 	tfiter "github.com/hashicorp/terraform-provider-aws/internal/iter"
@@ -18,11 +19,11 @@ import (
 
 // @SDKListResource("aws_route53_resolver_rule")
 func newRuleResourceAsListResource() inttypes.ListResourceForSDK {
-	return framework.NewSDKListResource(resourceRule(), framework.SDKListSpec[awstypes.ResolverRule]{
-		Items: func(ctx context.Context, c *conns.AWSClient) iter.Seq2[awstypes.ResolverRule, error] {
+	return framework.NewSDKListResource(resourceRule(), framework.SDKListSpec[awstypes.ResolverRule, framework.RegionQuery]{
+		Items: func(ctx context.Context, c *conns.AWSClient, _ framework.RegionQuery) (iter.Seq2[awstypes.ResolverRule, error], diag.Diagnostics) {
 			var input route53resolver.ListResolverRulesInput
 
-			return listResolverRules(ctx, c.Route53ResolverClient(ctx), &input)
+			return listResolverRules(ctx, c.Route53ResolverClient(ctx), &input), nil
 		},
 		ID:      func(r awstypes.ResolverRule) string { return aws.ToString(r.Id) },
 		Flatten: resourceRuleFlatten,

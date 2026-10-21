@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/securityhub"
 	awstypes "github.com/aws/aws-sdk-go-v2/service/securityhub/types"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
 	tfiter "github.com/hashicorp/terraform-provider-aws/internal/iter"
@@ -18,11 +19,11 @@ import (
 
 // @SDKListResource("aws_securityhub_insight")
 func newInsightResourceAsListResource() inttypes.ListResourceForSDK {
-	return framework.NewSDKListResource(resourceInsight(), framework.SDKListSpec[awstypes.Insight]{
-		Items: func(ctx context.Context, c *conns.AWSClient) iter.Seq2[awstypes.Insight, error] {
+	return framework.NewSDKListResource(resourceInsight(), framework.SDKListSpec[awstypes.Insight, framework.RegionQuery]{
+		Items: func(ctx context.Context, c *conns.AWSClient, _ framework.RegionQuery) (iter.Seq2[awstypes.Insight, error], diag.Diagnostics) {
 			var input securityhub.GetInsightsInput
 
-			return listInsights(ctx, c.SecurityHubClient(ctx), &input)
+			return listInsights(ctx, c.SecurityHubClient(ctx), &input), nil
 		},
 		ID:          func(i awstypes.Insight) string { return aws.ToString(i.InsightArn) },
 		Flatten:     resourceInsightFlatten,

@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	awstypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
 	tfiter "github.com/hashicorp/terraform-provider-aws/internal/iter"
@@ -18,11 +19,11 @@ import (
 
 // @SDKListResource("aws_cloudwatch_log_group")
 func newLogGroupResourceAsListResource() inttypes.ListResourceForSDK {
-	return framework.NewSDKListResource(resourceGroup(), framework.SDKListSpec[awstypes.LogGroup]{
-		Items: func(ctx context.Context, c *conns.AWSClient) iter.Seq2[awstypes.LogGroup, error] {
+	return framework.NewSDKListResource(resourceGroup(), framework.SDKListSpec[awstypes.LogGroup, framework.RegionQuery]{
+		Items: func(ctx context.Context, c *conns.AWSClient, _ framework.RegionQuery) (iter.Seq2[awstypes.LogGroup, error], diag.Diagnostics) {
 			var input cloudwatchlogs.DescribeLogGroupsInput
 
-			return listLogGroups(ctx, c.LogsClient(ctx), &input)
+			return listLogGroups(ctx, c.LogsClient(ctx), &input), nil
 		},
 		ID:      func(lg awstypes.LogGroup) string { return aws.ToString(lg.LogGroupName) },
 		Flatten: resourceGroupFlatten,

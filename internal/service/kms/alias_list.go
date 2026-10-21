@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	awstypes "github.com/aws/aws-sdk-go-v2/service/kms/types"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/framework"
 	tfiter "github.com/hashicorp/terraform-provider-aws/internal/iter"
@@ -18,11 +19,11 @@ import (
 
 // @SDKListResource("aws_kms_alias")
 func aliasResourceAsListResource() inttypes.ListResourceForSDK {
-	return framework.NewSDKListResource(resourceAlias(), framework.SDKListSpec[awstypes.AliasListEntry]{
-		Items: func(ctx context.Context, c *conns.AWSClient) iter.Seq2[awstypes.AliasListEntry, error] {
+	return framework.NewSDKListResource(resourceAlias(), framework.SDKListSpec[awstypes.AliasListEntry, framework.RegionQuery]{
+		Items: func(ctx context.Context, c *conns.AWSClient, _ framework.RegionQuery) (iter.Seq2[awstypes.AliasListEntry, error], diag.Diagnostics) {
 			var input kms.ListAliasesInput
 
-			return listAliases(ctx, c.KMSClient(ctx), &input)
+			return listAliases(ctx, c.KMSClient(ctx), &input), nil
 		},
 		ID:      func(a awstypes.AliasListEntry) string { return aws.ToString(a.AliasName) },
 		Flatten: resourceAliasFlatten,
