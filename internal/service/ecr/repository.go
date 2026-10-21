@@ -222,7 +222,9 @@ func resourceRepositoryRead(ctx context.Context, d *schema.ResourceData, meta an
 		return sdkdiag.AppendErrorf(diags, "reading ECR Repository (%s): %s", d.Id(), err)
 	}
 
-	resourceRepositoryFlatten(ctx, meta.(*conns.AWSClient), repository, d)
+	if err := resourceRepositoryFlatten(ctx, meta.(*conns.AWSClient), repository, d); err != nil {
+		return sdkdiag.AppendErrorf(diags, "reading ECR Repository (%s): %s", d.Id(), err)
+	}
 
 	return diags
 }

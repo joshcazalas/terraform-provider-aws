@@ -130,7 +130,11 @@ func TestPageItemsStopsEarly(t *testing.T) {
 	p := &fakePager{pages: [][]string{{"a", "b"}, {"c"}}}
 
 	// Breaking out of the first page must not request the second.
-	for range PageItems[pagerOptions](context.Background(), "listing things", p, pagerItems) {
+	for _, err := range PageItems[pagerOptions](context.Background(), "listing things", p, pagerItems) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
 		break
 	}
 
